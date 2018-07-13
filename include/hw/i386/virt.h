@@ -55,6 +55,8 @@ typedef struct {
 
     /* number of CPUs */
     uint16_t boot_cpus;
+
+    PCIBus *pci_bus;
 } VirtMachineState;
 
 #define TYPE_VIRT_MACHINE   MACHINE_TYPE_NAME("virt")
