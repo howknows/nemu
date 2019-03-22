@@ -281,7 +281,6 @@ int piix4_init(PCIBus *bus, ISABus **isa_bus, int devfn);
 
 /* pc_sysfw.c */
 void pc_system_flash_create(PCMachineState *pcms);
-void pc_system_firmware_init(PCMachineState *pcms, MemoryRegion *rom_memory);
 
 /* acpi-build.c */
 void pc_madt_cpu_entry(AcpiDeviceIf *adev, int uid,
