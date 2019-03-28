@@ -7,6 +7,7 @@
 #include "hw/mem/pc-dimm.h"
 #include "hw/mem/nvdimm.h"
 #include "hw/nvram/fw_cfg.h"
+#include "hw/block/flash.h"
 
 typedef
 struct AcpiBuildState {
@@ -30,6 +31,7 @@ struct AcpiConfiguration {
     bool linuxboot_dma_enabled;
     /* use PVH to load kernels that support this feature */
     bool pvh_enabled;
+    bool pci_enabled;
 
     /* Machine state settings */
     FWCfgState *fw_cfg;
@@ -40,6 +42,7 @@ struct AcpiConfiguration {
     bool apic_xrupt_override;
     unsigned apic_id_limit;
     struct NVDIMMState *nvdimms_state;
+    PFlashCFI01 *flash[2];
 
     /* Build state */
     AcpiBuildState *build_state;

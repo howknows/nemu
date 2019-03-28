@@ -33,6 +33,7 @@
 #include "hw/hw.h"
 #include "hw/i386/pc.h"
 #include "hw/i386/fw.h"
+#include "hw/i386/acpi.h"
 #include "hw/boards.h"
 #include "hw/loader.h"
 #include "sysemu/sysemu.h"
@@ -83,7 +84,7 @@ static void pc_isa_bios_init(MemoryRegion *rom_memory,
     memory_region_set_readonly(isa_bios, true);
 }
 
-static PFlashCFI01 *pc_pflash_create(PCMachineState *pcms,
+static PFlashCFI01 *pc_pflash_create(Object *obj,
                                      const char *name,
                                      const char *alias_prop_name)
 {
@@ -92,41 +93,39 @@ static PFlashCFI01 *pc_pflash_create(PCMachineState *pcms,
     qdev_prop_set_uint64(dev, "sector-length", FLASH_SECTOR_SIZE);
     qdev_prop_set_uint8(dev, "width", 1);
     qdev_prop_set_string(dev, "name", name);
-    object_property_add_child(OBJECT(pcms), name, OBJECT(dev),
+    object_property_add_child(obj, name, OBJECT(dev),
                               &error_abort);
-    object_property_add_alias(OBJECT(pcms), alias_prop_name,
+    object_property_add_alias(obj, alias_prop_name,
                               OBJECT(dev), "drive", &error_abort);
     return PFLASH_CFI01(dev);
 }
 
-void pc_system_flash_create(PCMachineState *pcms)
+void system_flash_create(Object *obj, AcpiConfiguration *conf)
 {
-    PCMachineClass *pcmc = PC_MACHINE_GET_CLASS(pcms);
-
-    if (pcmc->pci_enabled) {
-        pcms->flash[0] = pc_pflash_create(pcms, "system.flash0",
+    if (conf->pci_enabled) {
+        conf->flash[0] = pc_pflash_create(obj, "system.flash0",
                                           "pflash0");
-        pcms->flash[1] = pc_pflash_create(pcms, "system.flash1",
+        conf->flash[1] = pc_pflash_create(obj, "system.flash1",
                                           "pflash1");
     }
 }
 
-static void pc_system_flash_cleanup_unused(PCMachineState *pcms)
+static void pc_system_flash_cleanup_unused(Object *obj, AcpiConfiguration *conf)
 {
     char *prop_name;
     int i;
     Object *dev_obj;
 
-    assert(PC_MACHINE_GET_CLASS(pcms)->pci_enabled);
+    assert(conf->pci_enabled);
 
-    for (i = 0; i < ARRAY_SIZE(pcms->flash); i++) {
-        dev_obj = OBJECT(pcms->flash[i]);
+    for (i = 0; i < ARRAY_SIZE(conf->flash); i++) {
+        dev_obj = OBJECT(conf->flash[i]);
         if (!object_property_get_bool(dev_obj, "realized", &error_abort)) {
             prop_name = g_strdup_printf("pflash%d", i);
-            object_property_del(OBJECT(pcms), prop_name, &error_abort);
+            object_property_del(obj, prop_name, &error_abort);
             g_free(prop_name);
             object_unparent(dev_obj);
-            pcms->flash[i] = NULL;
+            conf->flash[i] = NULL;
         }
     }
 }
@@ -144,7 +143,7 @@ static void pc_system_flash_cleanup_unused(PCMachineState *pcms)
  * pc_isa_bios_init().  Merging several flash devices for isa-bios is
  * not supported.
  */
-static void pc_system_flash_map(PCMachineState *pcms,
+static void pc_system_flash_map(AcpiConfiguration *conf,
                                 MemoryRegion *rom_memory)
 {
     hwaddr total_size = 0;
@@ -156,10 +155,10 @@ static void pc_system_flash_map(PCMachineState *pcms,
     void *flash_ptr;
     int ret, flash_size;
 
-    assert(PC_MACHINE_GET_CLASS(pcms)->pci_enabled);
+    assert(conf->pci_enabled);
 
-    for (i = 0; i < ARRAY_SIZE(pcms->flash); i++) {
-        system_flash = pcms->flash[i];
+    for (i = 0; i < ARRAY_SIZE(conf->flash); i++) {
+        system_flash = conf->flash[i];
         blk = pflash_cfi01_get_blk(system_flash);
         if (!blk) {
             break;
@@ -265,23 +264,23 @@ static void old_pc_system_rom_init(MemoryRegion *rom_memory, bool isapc_ram_fw)
                                 bios);
 }
 
-void sysfw_firmware_init(PCMachineState *pcms,
-                             MemoryRegion *rom_memory)
+void sysfw_firmware_init(Object *obj,
+                         AcpiConfiguration *conf,
+                         MemoryRegion *rom_memory)
 {
-    PCMachineClass *pcmc = PC_MACHINE_GET_CLASS(pcms);
     int i;
     DriveInfo *pflash_drv;
-    BlockBackend *pflash_blk[ARRAY_SIZE(pcms->flash)];
+    BlockBackend *pflash_blk[ARRAY_SIZE(conf->flash)];
     Location loc;
 
-    if (!pcmc->pci_enabled) {
+    if (!conf->pci_enabled) {
         old_pc_system_rom_init(rom_memory, true);
         return;
     }
 
     /* Map legacy -drive if=pflash to machine properties */
-    for (i = 0; i < ARRAY_SIZE(pcms->flash); i++) {
-        pflash_blk[i] = pflash_cfi01_get_blk(pcms->flash[i]);
+    for (i = 0; i < ARRAY_SIZE(conf->flash); i++) {
+        pflash_blk[i] = pflash_cfi01_get_blk(conf->flash[i]);
         pflash_drv = drive_get(IF_PFLASH, 0, i);
         if (!pflash_drv) {
             continue;
@@ -293,13 +292,13 @@ void sysfw_firmware_init(PCMachineState *pcms,
             exit(1);
         }
         pflash_blk[i] = blk_by_legacy_dinfo(pflash_drv);
-        qdev_prop_set_drive(DEVICE(pcms->flash[i]),
+        qdev_prop_set_drive(DEVICE(conf->flash[i]),
                             "drive", pflash_blk[i], &error_fatal);
         loc_pop(&loc);
     }
 
     /* Reject gaps */
-    for (i = 1; i < ARRAY_SIZE(pcms->flash); i++) {
+    for (i = 1; i < ARRAY_SIZE(conf->flash); i++) {
         if (pflash_blk[i] && !pflash_blk[i - 1]) {
             error_report("pflash%d requires pflash%d", i, i - 1);
             exit(1);
@@ -320,8 +319,8 @@ void sysfw_firmware_init(PCMachineState *pcms,
             exit(1);
         }
 
-        pc_system_flash_map(pcms, rom_memory);
+        pc_system_flash_map(conf, rom_memory);
     }
 
-    pc_system_flash_cleanup_unused(pcms);
+    pc_system_flash_cleanup_unused(obj, conf);
 }

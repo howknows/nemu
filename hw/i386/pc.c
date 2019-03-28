@@ -1130,7 +1130,7 @@ void pc_memory_init(PCMachineState *pcms,
     }
 
     /* Initialize PC system firmware */
-    sysfw_firmware_init(pcms, rom_memory);
+    sysfw_firmware_init(OBJECT(pcms), pcms->acpi_configuration, rom_memory);
 
     option_rom_mr = g_malloc(sizeof(*option_rom_mr));
     memory_region_init_ram(option_rom_mr, NULL, "pc.rom", PC_ROM_SIZE,
@@ -1902,6 +1902,7 @@ static void pc_machine_set_pit(Object *obj, bool value, Error **errp)
 static void pc_machine_initfn(Object *obj)
 {
     PCMachineState *pcms = PC_MACHINE(obj);
+    PCMachineClass *pcmc = PC_MACHINE_GET_CLASS(pcms);
 
     pcms->max_ram_below_4g = 0; /* use default */
     pcms->smm = ON_OFF_AUTO_AUTO;
@@ -1911,8 +1912,9 @@ static void pc_machine_initfn(Object *obj)
     pcms->smbus_enabled = true;
     pcms->sata_enabled = true;
     pcms->pit_enabled = true;
+    pcms->acpi_configuration->pci_enabled = pcmc->pci_enabled;
 
-    pc_system_flash_create(pcms);
+    system_flash_create(obj, pcms->acpi_configuration);
 }
 
 static void pc_machine_reset(void)
