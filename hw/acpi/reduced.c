@@ -101,7 +101,7 @@ static void acpi_reduced_build(MachineState *ms, AcpiBuildTables *tables, AcpiCo
 {
     MachineClass *mc = MACHINE_GET_CLASS(ms);
     GArray *table_offsets;
-    unsigned dsdt, rsdt;
+    unsigned dsdt, xsdt;
     GArray *tables_blob = tables->table_data;
 
     table_offsets = g_array_new(false, true /* clear */,
@@ -124,14 +124,14 @@ static void acpi_reduced_build(MachineState *ms, AcpiBuildTables *tables, AcpiCo
     mc->firmware_build_methods.acpi.madt(tables_blob, tables->linker, ms, conf);
 
     /* RSDT is pointed to by RSDP */
-    rsdt = tables_blob->len;
-    build_rsdt(tables_blob, tables->linker, table_offsets, NULL, NULL);
+    xsdt = tables_blob->len;
+    build_xsdt(tables_blob, tables->linker, table_offsets, NULL, NULL);
 
     AcpiRsdpData rsdp_data = {
-        .revision = 0,
+        .revision = 2,
         .oem_id = ACPI_BUILD_APPNAME6,
-        .xsdt_tbl_offset = NULL,
-        .rsdt_tbl_offset = &rsdt,
+        .xsdt_tbl_offset = &xsdt,
+        .rsdt_tbl_offset = NULL,
     };
     /* RSDP is in FSEG memory, so allocate it separately */
     mc->firmware_build_methods.acpi.rsdp(tables->rsdp, tables->linker, &rsdp_data);
