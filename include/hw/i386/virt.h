@@ -69,4 +69,6 @@ typedef struct {
 
 MemoryRegion *virt_memory_init(VirtMachineState *vms);
 
+DeviceState *virt_acpi_init(void);
+
 #endif
