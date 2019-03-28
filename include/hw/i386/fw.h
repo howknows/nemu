@@ -6,7 +6,7 @@
 #include "hw/nvram/fw_cfg.h"
 
 #include "hw/timer/hpet.h"
-#include "hw/i386/acpi.h"
+#include "hw/acpi/acpi.h"
 
 #define FW_CFG_ACPI_TABLES (FW_CFG_ARCH_LOCAL + 0)
 #define FW_CFG_SMBIOS_ENTRIES (FW_CFG_ARCH_LOCAL + 1)

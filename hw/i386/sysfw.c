@@ -33,7 +33,7 @@
 #include "hw/hw.h"
 #include "hw/i386/pc.h"
 #include "hw/i386/fw.h"
-#include "hw/i386/acpi.h"
+#include "hw/acpi/acpi.h"
 #include "hw/boards.h"
 #include "hw/loader.h"
 #include "sysemu/sysemu.h"
