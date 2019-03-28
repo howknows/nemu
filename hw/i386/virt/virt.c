@@ -137,6 +137,11 @@ static void virt_machine_state_init(MachineState *machine)
 
 static void virt_machine_instance_init(Object *obj)
 {
+     VirtMachineState *vms = VIRT_MACHINE(obj);
+     VirtMachineClass *vmc = VIRT_MACHINE_GET_CLASS(vms);
+
+     vms->acpi_configuration->pci_enabled = vmc->pci_enabled;
+     system_flash_create(obj, vms->acpi_configuration);
 }
 
 static void virt_machine_reset(void)

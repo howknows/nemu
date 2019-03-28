@@ -24,9 +24,14 @@
 
 #include "hw/boards.h"
 #include "hw/i386/acpi.h"
+#include "hw/block/flash.h"
 
 typedef struct {
     MachineClass parent;
+
+    /* Device configuration: */
+    bool pci_enabled;
+
     HotplugHandler *(*orig_hotplug_handler)(MachineState *machine,
                                            DeviceState *dev);
 } VirtMachineClass;
@@ -46,6 +51,7 @@ typedef struct {
 
     /* Devices and objects */
     FWCfgState *fw_cfg;
+    PFlashCFI01 *flash[2];
 
     /* number of CPUs */
     uint16_t boot_cpus;
